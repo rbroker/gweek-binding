@@ -41,7 +41,7 @@ def writeHdrFilePrefix(hdrFile):
 	hdrFile.write('{\n')
 	hdrFile.write('#endif\n')
 	hdrFile.write('/* Needed to trigger binding initialization from the system OpenGL libraries. */')
-	hdrFile.write('void initialize_bindings();\n')
+	hdrFile.write('void gweekgl_initialize();\n')
 	hdrFile.write('\n');
 
 def writeHdrFileSuffix(hdrFile):
@@ -98,7 +98,7 @@ def writeBindingImplementation(srcFile, definedApiCalls, aliasedApiCalls):
 		srcFile.write('' + ptrType + ' ' + name + ';\n')
 
 	srcFile.write('\n');
-	srcFile.write('void initialize_bindings()\n')
+	srcFile.write('void gweekgl_initialize()\n')
 	srcFile.write('{\n');
 
 	for apiCall in definedApiCalls:
