@@ -1,13 +1,13 @@
 # gweek-binding
-This project uses Python to generate a runtime C++ OpenGL binding from the OpenGL official XML spec files, and exposes a static library which can be used to easily include extended OpenGL support in any CMake project.
+This project uses Python to generate a runtime C OpenGL binding from the OpenGL official XML spec files, and exposes a static library which can be used to easily include extended OpenGL support in any CMake project.
+
+It was intended to be easily included and built from a git submodule, in other projects.
 
 # Prerequisites
 - Python 3
+- CMake
 
 # Using the Bindings
-This imports the OpenGL extension header files from the Khronos-maintained OpenGL-Registry, and generates a static library which can be linked with
-to bind to the Core OpenGL library functions at runtime.
-
 The build uses CMAKE to define a new build target "`gweek-binding`", as well as a variable "`${gweek-binding-include}`", allowing easy integration into an existing CMakeLists.txt using:
 
 ```cmake
@@ -19,14 +19,19 @@ target_link_libraries(myproject PRIVATE gweek-binding)
 
 After which, the bound OpenGL functions can be accessed by including the appropriate headers, and calling the functions.:
 
-```c++
+```c
 #include <gweekgl/opengl.h>
 
-bool is_func_available()
+GLint get_major_opengl_version()
 {
-    initialize_bindings();
+	// Initialize a rendering context (e.g. ::glfwMakeContextCurrent(window)), then call:
+
+    gweekgl_initialize();
     
-    return ::glGenBuffers != nullptr;
+    GLint version;
+	::glGetIntegerv(GL_MAJOR_VERSION, &version);
+
+    return version;
 }
 ```
 

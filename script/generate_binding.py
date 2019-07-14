@@ -40,8 +40,8 @@ def writeHdrFilePrefix(hdrFile):
 	hdrFile.write('extern "C"\n')
 	hdrFile.write('{\n')
 	hdrFile.write('#endif\n')
-	hdrFile.write('\t/* Needed to trigger binding initialization from the system OpenGL libraries. */\n')
-	hdrFile.write('\tvoid gweekgl_initialize();\n')
+	hdrFile.write('/* Needed to trigger binding initialization from the system OpenGL libraries. */')
+	hdrFile.write('void gweekgl_initialize();\n')
 	hdrFile.write('\n');
 
 def writeHdrFileSuffix(hdrFile):
@@ -103,11 +103,11 @@ def writeBindingImplementation(srcFile, definedApiCalls, aliasedApiCalls):
 
 	for apiCall in definedApiCalls:
 		ptrType = 'PFN' + apiCall.upper() + 'PROC'
-		srcFile.write('\t' + ptrType + ' ' + apiCall + ' = (' + ptrType + ')(GWEEK_PROC_ADDR_FUNC("' + apiCall + '"));\n')
+		srcFile.write('\t' + apiCall + ' = (' + ptrType + ')(GWEEK_PROC_ADDR_FUNC("' + apiCall + '"));\n')
 
 	for name, alias in aliasedApiCalls.items():
 		ptrType = 'PFN' + name.upper() + 'PROC'
-		srcFile.write('\t' + ptrType + ' ' + name + ' = (' + ptrType + ')(' + alias + ');\n')
+		srcFile.write('\t' + name + ' = (' + ptrType + ')(' + alias + ');\n')
 
 	srcFile.write('}\n')
 
@@ -233,7 +233,7 @@ def genBindings(registryPath, registryFileName, srcFile, hdrFile):
 		if apiCall in excludedApiCalls:
 			excludedApiCalls.remove(apiCall)
 
-	print('Generating C++ binding...')
+	print('Generating C binding...')
 	writeHdrFilePrefix(hdrOutputFile)
 	writeSrcFilePrefix(srcOutputFile)
 
