@@ -7,6 +7,8 @@
 #elif !defined(_WIN64)
 #define GWEEK_PLATFORM_X86
 #endif
+#elif defined(__linux__)
+#define GWEEK_PLATFORM_LINUX
 #else
 #error Unsupported Platform
 #endif
@@ -39,5 +41,9 @@
 #endif
 
 #define GWEEK_PROC_ADDR_FUNC	(wglGetProcAddress)
+#endif
 
+#if defined(GWEEK_PLATFORM_LINUX)
+#include <GL/gl.h>
+#define GWEEK_PROC_ADDR_FUNC    (glxGetProcAddress)
 #endif
