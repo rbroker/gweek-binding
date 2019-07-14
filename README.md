@@ -1,5 +1,5 @@
-# gweek_binding
-C++ OpenGL Binding Generator
+# gweek-binding
+This project uses Python to generate a runtime C++ OpenGL binding from the OpenGL official XML spec files, and exposes a static library which can be used to easily include extended OpenGL support in any CMake project.
 
 # Prerequisites
 - Python 3

@@ -30,7 +30,7 @@ add_custom_command(TARGET gweek-binding PRE_BUILD
 
 # Generate OpenGL bindings.
 add_custom_command(TARGET gweek-binding PRE_BUILD
-    COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/script/generate_binding.py
+    COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/script/generate_binding.py --path "${CMAKE_CURRENT_SOURCE_DIR}/extern/OpenGL-Registry/xml/" --cppfile "${CMAKE_CURRENT_SOURCE_DIR}/src/gl.cpp" --extensionDir = "${CMAKE_CURRENT_SOURCE_DIR}/extern/OpenGL-Registry/extensions/"
     DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/script/generate_binding.py
     OUTPUTS ${CMAKE_CURRENT_SOURCE_DIR}/src/gl.cpp
     COMMENT "Generating code for core OpenGL bindings"
