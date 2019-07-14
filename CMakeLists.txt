@@ -13,6 +13,8 @@ add_library(gweek-binding STATIC
 	${CMAKE_CURRENT_SOURCE_DIR}/src/gl.cpp
 )
 
+set_source_files_properties(${CMAKE_CURRENT_SOURCE_DIR}/src/gl.cpp PROPERTIES GENERATED TRUE)
+
 # Copy OpenGL headers from registry
 add_custom_command(TARGET gweek-binding PRE_BUILD
     COMMAND ${CMAKE_COMMAND} -E copy_directory

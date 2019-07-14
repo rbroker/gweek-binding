@@ -128,7 +128,9 @@ class OpenGLRegistry(xml.sax.ContentHandler):
 # This function is used to generate runtime API bindings for OpenGL, in the global namespace.
 def genBindings(registryPath, registryFileName, cppFile):
 
-	cppOutputFile = open(cppFile, "w")	
+	os.makedirs(os.path.dirname(cppFile), exist_ok=True)
+
+	cppOutputFile = open(cppFile, "w+")	
 
 	registryFilePath = os.path.join(registryPath, registryFileName)
 	excludedApiCalls = set()
