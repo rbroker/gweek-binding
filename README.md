@@ -5,14 +5,31 @@ C++ OpenGL Binding Generator
 - Python 3
 
 # Using the Bindings
-gweek-binding is built using CMAKE. It defines a static library target "`gweek-binding`", as well as a variable "`${gweek-binding-include}`" which defines the available OpenGL functions & macros. It can be included in an existing CMakeLists.txt using:
+This imports the OpenGL extension header files from the Khronos-maintained OpenGL-Registry, and generates a static library which can be linked with
+to bind to the Core OpenGL library functions at runtime.
 
-`add_subdirectory(extern/gweek-binding)`
+The build uses CMAKE to define a new build target "`gweek-binding`", as well as a variable "`${gweek-binding-include}`", allowing easy integration into an existing CMakeLists.txt using:
 
-After which, the generated binding header can be included using:
+```cmake
+add_subdirectory(extern/gweek-binding)
+
+target_include_directories(myproject PRIVATE ${gweek-binding-include})
+target_link_libraries(myproject PRIVATE gweek-binding)
+```
+
+After which, the bound OpenGL functions can be accessed by including the appropriate headers, and calling the functions.:
 
 ```c++
-#include <gweekgl/gl.h>
+#include <GL/glcorearb.h>
+#include <GL/glext.h>
+#include <GL/glxext.h>
+#include <GL/wgl.h>
+#include <GL/wglext.h>
+
+bool is_func_available()
+{
+    return ::glGenBuffers != nullptr;
+}
 ```
 
 
