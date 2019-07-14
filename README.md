@@ -20,11 +20,8 @@ target_link_libraries(myproject PRIVATE gweek-binding)
 After which, the bound OpenGL functions can be accessed by including the appropriate headers, and calling the functions.:
 
 ```c++
-#include <GL/glcorearb.h>
-#include <GL/glext.h>
-#include <GL/glxext.h>
-#include <GL/wgl.h>
-#include <GL/wglext.h>
+#include <gweekgl/opengl.h>
+```
 
 bool is_func_available()
 {

@@ -9,10 +9,12 @@ find_package(Python3 REQUIRED Interpreter)
 set(gweek_binding_include ${CMAKE_CURRENT_SOURCE_DIR}/include/public)
 
 add_library(gweek-binding STATIC    
-    ${CMAKE_CURRENT_SOURCE_DIR}/include/platform.h        
+    ${CMAKE_CURRENT_SOURCE_DIR}/include/platform.h
+	${gweek_binding_include}/gweekgl/opengl.h
 	${CMAKE_CURRENT_SOURCE_DIR}/src/gl.cpp
 )
 
+set_source_files_properties(${gweek_binding_include}/gweekgl/opengl.h PROPERTIES GENERATED TRUE)
 set_source_files_properties(${CMAKE_CURRENT_SOURCE_DIR}/src/gl.cpp PROPERTIES GENERATED TRUE)
 
 # Copy OpenGL headers from registry
@@ -30,7 +32,7 @@ add_custom_command(TARGET gweek-binding PRE_BUILD
 
 # Generate OpenGL bindings.
 add_custom_command(TARGET gweek-binding PRE_BUILD
-    COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/script/generate_binding.py --xmlDir "${CMAKE_CURRENT_SOURCE_DIR}/extern/OpenGL-Registry/xml/" --xmlName "gl.xml" --cppFile "${CMAKE_CURRENT_SOURCE_DIR}/src/gl.cpp" --extensionDir "${CMAKE_CURRENT_SOURCE_DIR}/extern/OpenGL-Registry/extensions/"
+    COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/script/generate_binding.py --xmlDir "${CMAKE_CURRENT_SOURCE_DIR}/extern/OpenGL-Registry/xml/" --xmlName "gl.xml" --cppFile "${CMAKE_CURRENT_SOURCE_DIR}/src/gl.cpp" --hdrFile "${gweek_binding_include}/gweekgl/opengl.h" --extensionDir "${CMAKE_CURRENT_SOURCE_DIR}/extern/OpenGL-Registry/extensions/"
     DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/script/generate_binding.py
     OUTPUTS ${CMAKE_CURRENT_SOURCE_DIR}/src/gl.cpp
     COMMENT "Generating code for core OpenGL bindings"
