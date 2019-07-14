@@ -12,7 +12,7 @@ gweek-binding is built using CMAKE. It defines a static library target "`gweek-b
 After which, the generated binding header can be included using:
 
 ```c++
-#include <gweekgl/bind.h>
+#include <gweekgl/gl.h>
 ```
 
 
