@@ -21,7 +21,6 @@ After which, the bound OpenGL functions can be accessed by including the appropr
 
 ```c++
 #include <gweekgl/opengl.h>
-```
 
 bool is_func_available()
 {

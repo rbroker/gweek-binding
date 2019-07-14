@@ -36,29 +36,26 @@ def writeHdrFilePrefix(hdrFile):
 	hdrFile.write('#include <GL/glext.h>\n')
 	hdrFile.write('\n')
 
-
+	hdrFile.write('#ifdef __cplusplus\n')
 	hdrFile.write('extern "C"\n')
 	hdrFile.write('{\n')
+	hdrFile.write('#endif\n')
 
 def writeHdrFileSuffix(hdrFile):
+	hdrFile.write('#ifdef __cplusplus\n')
 	hdrFile.write('}\n')
+	hdrFile.write('#endif')
 	hdrFile.write('\n')
 
-def writeCppFilePrefix(cppFile):	
-	cppFile.write('#include "platform.h"\n')
-#	cppFile.write('#include <GL/glcorearb.h>\n')
-	cppFile.write('#include <gweekgl/opengl.h>\n')
-#	cppFile.write('#include <GL/glxext.h>\n')
-#	cppFile.write('#include <GL/wgl.h>\n')
-#	cppFile.write('#include <GL/wglext.h>\n')
-	cppFile.write('\n')
-	cppFile.write('namespace\n')
-	cppFile.write('{\n')
+def writeSrcFilePrefix(srcFile):	
+	srcFile.write('#include "platform.h"\n')
+	srcFile.write('#include <gweekgl/opengl.h>\n')
+	srcFile.write('\n')	
 
-def writeCppFileSuffix(cppFile):
-	cppFile.write('}\n')
+def writeSrcFileSuffix(srcFile):
+	srcFile.write('\n')
 
-def writeStaticFunctionBinding(cppFile, hdrFile, excludedApiCalls, definedApiCalls, name, alias):
+def trackStaticFunctionBinding(srcFile, hdrFile, excludedApiCalls, definedApiCalls, aliasedApiCalls, name, alias):
 
 	for extensionSuffix in nonPortableExtensions:
 		if name.endswith(extensionSuffix):
@@ -70,14 +67,46 @@ def writeStaticFunctionBinding(cppFile, hdrFile, excludedApiCalls, definedApiCal
 	if name == 'glGetPointerv':
 		return # HACK, not sure why the default Chronos headers don't generate this function ptr.
 
-	definedApiCalls.add(name)
-	
-	if not alias or alias not in definedApiCalls:
-		cppFile.write('\tauto const ' + name + ' = reinterpret_cast<PFN' + name.upper() + 'PROC>(GWEEK_PROC_ADDR_FUNC("' + name + '"));\n')
+	if not alias:
+		definedApiCalls.add(name)
 	else:
-		cppFile.write('\tauto const ' + name + ' = reinterpret_cast<PFN' + name.upper() + 'PROC>(' + alias + ');\n')
+		aliasedApiCalls[name] = alias
 
-	hdrFile.write('\textern PFN' + name.upper() + 'PROC ' + name + ';\n')
+	ptrType = 'PFN' + name.upper() + 'PROC'
+
+	hdrFile.write('\textern ' + ptrType + ' ' + name + ';\n')
+
+def writeBindingImplementation(srcFile, definedApiCalls, aliasedApiCalls):
+
+	undefinedAliases = set()
+	for name, alias in aliasedApiCalls.items():
+		if alias not in definedApiCalls:
+			undefinedAliases.add(name)
+
+	for undefinedAlias in undefinedAliases:
+		del aliasedApiCalls[undefinedAlias]
+
+	for apiCall in definedApiCalls:
+		ptrType = 'PFN' + apiCall.upper() + 'PROC'
+		srcFile.write('' + ptrType + ' ' + apiCall + ';\n')
+
+	for name in aliasedApiCalls.keys():
+		ptrType = 'PFN' + name.upper() + 'PROC'
+		srcFile.write('' + ptrType + ' ' + name + ';\n')
+
+	srcFile.write('\n');
+	srcFile.write('void initialize_bindings()\n')
+	srcFile.write('{\n');
+
+	for apiCall in definedApiCalls:
+		ptrType = 'PFN' + apiCall.upper() + 'PROC'
+		srcFile.write('\t' + ptrType + ' ' + apiCall + ' = (' + ptrType + ')(GWEEK_PROC_ADDR_FUNC("' + apiCall + '"));\n')
+
+	for name, alias in aliasedApiCalls.items():
+		ptrType = 'PFN' + name.upper() + 'PROC'
+		srcFile.write('\t' + ptrType + ' ' + name + ' = (' + ptrType + ')(' + alias + ');\n')
+
+	srcFile.write('}\n')
 
 class OpenGLRegistryExclusions(xml.sax.ContentHandler):
 
@@ -130,14 +159,15 @@ class OpenGLRegistryExclusions(xml.sax.ContentHandler):
 
 class OpenGLRegistry(xml.sax.ContentHandler):
 	
-	def __init__(self, cppFile, hdrFile, excludedApiCalls):
+	def __init__(self, srcFile, hdrFile, excludedApiCalls, definedApiCalls, aliasedApiCalls):
 		self.state = OpenGLRegistryParserState.NONE	
-		self.cppFile = cppFile
+		self.srcFile = srcFile
 		self.hdrFile = hdrFile
 		self.excludedApiCalls = excludedApiCalls
 		self.apiCallChunk = ''
 		self.apiAlias = ''
-		self.definedApiCalls = set()
+		self.definedApiCalls = definedApiCalls
+		self.aliasedApiCalls = aliasedApiCalls
 
 	def startElement(self, name, attrs):
 		if name == "registry" and self.state == OpenGLRegistryParserState.NONE:
@@ -164,7 +194,7 @@ class OpenGLRegistry(xml.sax.ContentHandler):
 		if name == "commands" and self.state == OpenGLRegistryParserState.COMMAND_LIST:
 			self.state = OpenGLRegistryParserState.ROOT_NODE
 		if name == "command" and self.state == OpenGLRegistryParserState.COMMAND:
-			writeStaticFunctionBinding(self.cppFile, self.hdrFile, self.excludedApiCalls, self.definedApiCalls, self.apiCallChunk, self.apiAlias)
+			trackStaticFunctionBinding(self.srcFile, self.hdrFile, self.excludedApiCalls, self.definedApiCalls, self.aliasedApiCalls, self.apiCallChunk, self.apiAlias)
 			self.apiCallChunk = ''
 			self.apiAlias = ''
 			self.state = OpenGLRegistryParserState.COMMAND_LIST
@@ -176,17 +206,19 @@ class OpenGLRegistry(xml.sax.ContentHandler):
 			self.state = OpenGLRegistryParserState.COMMAND
 
 # This function is used to generate runtime API bindings for OpenGL, in the global namespace.
-def genBindings(registryPath, registryFileName, cppFile, hdrFile):
+def genBindings(registryPath, registryFileName, srcFile, hdrFile):
 
-	os.makedirs(os.path.dirname(cppFile), exist_ok=True)
+	os.makedirs(os.path.dirname(srcFile), exist_ok=True)
 	os.makedirs(os.path.dirname(hdrFile), exist_ok=True)
 
-	cppOutputFile = open(cppFile, "w+")	
+	srcOutputFile = open(srcFile, "w+")	
 	hdrOutputFile = open(hdrFile, "w+")
 
 	registryFilePath = os.path.join(registryPath, registryFileName)
 	excludedApiCalls = set()
 	includedApiCalls = set()
+	definedApiCalls = set()
+	aliasedApiCalls = dict()
 
 	print('Building API exclusion list...')
 	openGLExlusionsParser = xml.sax.make_parser()
@@ -200,14 +232,16 @@ def genBindings(registryPath, registryFileName, cppFile, hdrFile):
 
 	print('Generating C++ binding...')
 	writeHdrFilePrefix(hdrOutputFile)
-	writeCppFilePrefix(cppOutputFile)
+	writeSrcFilePrefix(srcOutputFile)
 
 	xmlParser = xml.sax.make_parser()
-	xmlParser.setContentHandler(OpenGLRegistry(cppOutputFile, hdrOutputFile, excludedApiCalls))			
+	xmlParser.setContentHandler(OpenGLRegistry(srcOutputFile, hdrOutputFile, excludedApiCalls, definedApiCalls, aliasedApiCalls))			
 	xmlParser.parse(open(registryFilePath, "r"))
 
+	writeBindingImplementation(srcOutputFile, definedApiCalls, aliasedApiCalls)
+
 	writeHdrFileSuffix(hdrOutputFile)
-	writeCppFileSuffix(cppOutputFile)
+	writeSrcFileSuffix(srcOutputFile)
 
 	print('Done!')
 
@@ -216,7 +250,7 @@ if __name__ == '__main__':
 	argParser = argparse.ArgumentParser(description='Generate OpenGL runtime Bindings from OpenGL Registry')
 	argParser.add_argument('--xmlDir', help='The path to the OpenGL-Registry XML directory')
 	argParser.add_argument('--xmlName', help='override registry input file', default='gl.xml')
-	argParser.add_argument('--cppFile', help='override C++ output file path', default='../src/gl.cpp')
+	argParser.add_argument('--srcFile', help='override C output file path', default='../src/opengl.c')
 	argParser.add_argument('--hdrFile', help='override output header file path')
 	argParser.add_argument('--extensionDir', help='override extension registry directory')
 	args = argParser.parse_args()
@@ -224,4 +258,4 @@ if __name__ == '__main__':
 	print('Finding OpenGL extension suffixies...')
 	findNonPortableExtensionSuffixes(args.extensionDir)	
 
-	genBindings(args.xmlDir, args.xmlName, args.cppFile, args.hdrFile)		
+	genBindings(args.xmlDir, args.xmlName, args.srcFile, args.hdrFile)		
