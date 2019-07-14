@@ -33,7 +33,7 @@ class OpenGLRegistryParserState(Enum):
 def writeHdrFilePrefix(hdrFile):
 	hdrFile.write('#pragma once\n')
 	hdrFile.write('\n')
-	hdrFile.write('#include <GL/glext.h>\n')
+	hdrFile.write('#include <gweekgl/platform.h>\n')			
 	hdrFile.write('\n')
 
 	hdrFile.write('#ifdef __cplusplus\n')
@@ -43,16 +43,19 @@ def writeHdrFilePrefix(hdrFile):
 	hdrFile.write('\n')
 	hdrFile.write('\t/* Needed to trigger binding initialization from the system OpenGL libraries. */\n')
 	hdrFile.write('\tvoid gweekgl_initialize();\n')
-	hdrFile.write('\n');
+	hdrFile.write('\n')
+	hdrFile.write('/* For some reason, on linux gl.h includes glext.h and defines all the prototypes */\n')
+	hdrFile.write('#if !defined(GWEEK_PLATFORM_LINUX)\n')
 
 def writeHdrFileSuffix(hdrFile):
+	hdrFile.write('#endif\n')
 	hdrFile.write('#ifdef __cplusplus\n')
 	hdrFile.write('}\n')
 	hdrFile.write('#endif')
 	hdrFile.write('\n')
 
 def writeSrcFilePrefix(srcFile):	
-	srcFile.write('#include "platform.h"\n')
+	srcFile.write('#include <gweekgl/platform.h>\n')
 	srcFile.write('#include <gweekgl/opengl.h>\n')
 	srcFile.write('\n')	
 

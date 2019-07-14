@@ -29,6 +29,7 @@
 
 #include <Windows.h>
 #include <gl/GL.h>
+#include <GL/glext.h>
 
 #if defined(GWEEK_WIN32_LEAN_AND_MEAN)
 #undef GWEEK_WIN32_LEAN_AND_MEAN
@@ -43,7 +44,11 @@
 #define GWEEK_PROC_ADDR_FUNC	(wglGetProcAddress)
 #endif
 
+// #################################
+// Definitions for Linux Platform
+// #################################
 #if defined(GWEEK_PLATFORM_LINUX)
 #include <GL/gl.h>
+#include <GL/glext.h>
 #define GWEEK_PROC_ADDR_FUNC    (glxGetProcAddress)
 #endif

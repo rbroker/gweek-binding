@@ -22,7 +22,7 @@ add_custom_target(gweek-binding-prebuild
     ${gweek_binding_include}/KHR/    
             
     COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/script/generate_binding.py --xmlDir "${CMAKE_CURRENT_SOURCE_DIR}/extern/OpenGL-Registry/xml/" --xmlName "gl.xml" --srcFile "${CMAKE_CURRENT_SOURCE_DIR}/src/opengl.c" --hdrFile "${gweek_binding_include}/gweekgl/opengl.h" --extensionDir "${CMAKE_CURRENT_SOURCE_DIR}/extern/OpenGL-Registry/extensions/"
-    DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/script/generate_binding.py        
+    #DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/script/generate_binding.py        
     COMMENT "Generating code for core OpenGL bindings..."
 )
 
@@ -32,8 +32,6 @@ add_library(gweek-binding STATIC
 	${CMAKE_CURRENT_SOURCE_DIR}/src/opengl.c    
 )
 
-add_dependencies(gweek-binding gweek-binding-prebuild)
-
 target_include_directories(gweek-binding PUBLIC ${gweek_binding_include})
 target_include_directories(gweek-binding PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/include)
 
@@ -42,3 +40,5 @@ if (WIN32)
 elseif(UNIX)
 	target_link_libraries(gweek-binding PRIVATE libGL.so)
 endif()
+
+add_dependencies(gweek-binding gweek-binding-prebuild)
