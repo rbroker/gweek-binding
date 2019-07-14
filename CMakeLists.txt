@@ -36,7 +36,8 @@ add_custom_command(TARGET gweek-binding PRE_BUILD
     COMMENT "Generating code for core OpenGL bindings"
 )
 
-target_include_directories(gweek-binding PUBLIC ${gweek_binding_include} ${CMAKE_CURRENT_SOURCE_DIR}/include)
+target_include_directories(gweek-binding PUBLIC ${gweek_binding_include})
+target_include_directories(gweek-binding PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/include)
 target_compile_features(gweek-binding PRIVATE cxx_std_17)
 
 if (WIN32)
