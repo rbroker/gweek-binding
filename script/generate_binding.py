@@ -8,6 +8,7 @@ from enum import Enum
 
 def findNonPortableExtensionSuffixes(extensionDir):
 	# https://www.opengl.org/archives/resources/features/OGLextensions/	
+	print(extensionDir)
 	for dirent in os.listdir(extensionDir):
 		if not os.path.isdir(os.path.join(extensionDir, dirent)):			
 			continue
@@ -24,8 +25,11 @@ class OpenGLRegistryParserState(Enum):
 	PROTO = 4
 	PROTO_TYPE = 5
 	PROTO_NAME = 6	
-	FEATURE_LIST = 7
-	FEATURE_LIST_REQUIRE = 8
+	EXCLUDED_FEATURE_LIST = 7
+	EXCLUDED_FEATURE_LIST_REQUIRE = 8
+	INCLUDED_FEATURE_LIST = 9
+	INCLUDED_FEATURE_LIST_REQUIRE = 10
+	COMMAND_ALIAS = 11
 
 def writeCppFilePrefix(cppFile):
 	cppFile.write('#include "platform.h"\n')
@@ -41,7 +45,7 @@ def writeCppFilePrefix(cppFile):
 def writeCppFileSuffix(cppFile):
 	cppFile.write('}\n')
 
-def writeStaticFunctionBinding(cppFile, excludedApiCalls, name):
+def writeStaticFunctionBinding(cppFile, excludedApiCalls, definedApiCalls, name, alias):
 
 	for extensionSuffix in nonPortableExtensions:
 		if name.endswith(extensionSuffix):
@@ -49,14 +53,23 @@ def writeStaticFunctionBinding(cppFile, excludedApiCalls, name):
 
 	if name in excludedApiCalls:
 		return	
+
+	if name == 'glGetPointerv':
+		return # HACK, not sure why the default Chronos headers don't generate this function ptr.
+
+	definedApiCalls.add(name)
 	
-	cppFile.write('\tstatic const auto ' + name + ' = reinterpret_cast<PFN' + name.upper() + 'PROC>(GWEEK_PROC_ADDR_FUNC("' + name + '"));\n')
+	if not alias or alias not in definedApiCalls:
+		cppFile.write('\tstatic const auto ' + name + ' = reinterpret_cast<PFN' + name.upper() + 'PROC>(GWEEK_PROC_ADDR_FUNC("' + name + '"));\n')
+	else:
+		cppFile.write('\tstatic const auto ' + name + ' = reinterpret_cast<PFN' + name.upper() + 'PROC>(' + alias + ');\n')
 
 class OpenGLRegistryExclusions(xml.sax.ContentHandler):
 
-	def __init__(self, exclusionSet):
+	def __init__(self, exclusionSet, inclusionSet):
 		self.state = OpenGLRegistryParserState.NONE	
 		self.exclusionSet = exclusionSet
+		self.inclusionSet = inclusionSet
 	
 	def startElement(self, name, attrs):
 		if name == "registry" and self.state == OpenGLRegistryParserState.NONE:
@@ -65,25 +78,40 @@ class OpenGLRegistryExclusions(xml.sax.ContentHandler):
 			api = attrs['api']
 			featureVersion = attrs['name']
 
-			if (api != 'gl') or (featureVersion == 'GL_VERSION_1_0' or featureVersion == 'GL_VERSION_1_1'):
-				self.state = OpenGLRegistryParserState.FEATURE_LIST
+			if api != 'gl' or featureVersion == 'GL_VERSION_1_0' or featureVersion == 'GL_VERSION_1_1':
+				self.state = OpenGLRegistryParserState.EXCLUDED_FEATURE_LIST
+			else:			
+				self.state = OpenGLRegistryParserState.INCLUDED_FEATURE_LIST
 
-		if name == "require" and self.state == OpenGLRegistryParserState.FEATURE_LIST:
-			self.state = OpenGLRegistryParserState.FEATURE_LIST_REQUIRE
+		if name == "require" and self.state == OpenGLRegistryParserState.EXCLUDED_FEATURE_LIST:
+			self.state = OpenGLRegistryParserState.EXCLUDED_FEATURE_LIST_REQUIRE
 
-		if name == "command" and self.state == OpenGLRegistryParserState.FEATURE_LIST_REQUIRE:
+		if name == "require" and self.state == OpenGLRegistryParserState.INCLUDED_FEATURE_LIST:
+			self.state = OpenGLRegistryParserState.INCLUDED_FEATURE_LIST_REQUIRE
+
+		if name == "command" and self.state == OpenGLRegistryParserState.EXCLUDED_FEATURE_LIST_REQUIRE:
 			functionName = attrs['name']
 
-			if (functionName != ''):
+			if (functionName):
 				self.exclusionSet.add(functionName)
+
+		if name == "command" and self.state == OpenGLRegistryParserState.INCLUDED_FEATURE_LIST_REQUIRE:
+			functionName = attrs['name']
+
+			if (functionName):
+				self.inclusionSet.add(functionName)
 
 	def endElement(self, name):
 		if name == "registry" and self.state == OpenGLRegistryParserState.ROOT_NODE:
 			self.state = OpenGLRegistryParserState.NONE
-		if name == "feature" and self.state == OpenGLRegistryParserState.FEATURE_LIST:
+		if name == "feature" and self.state == OpenGLRegistryParserState.EXCLUDED_FEATURE_LIST:
 			self.state = OpenGLRegistryParserState.ROOT_NODE
-		if name == "require" and self.state == OpenGLRegistryParserState.FEATURE_LIST_REQUIRE:
-			self.state = OpenGLRegistryParserState.FEATURE_LIST		
+		if name == "feature" and self.state == OpenGLRegistryParserState.INCLUDED_FEATURE_LIST:
+			self.state = OpenGLRegistryParserState.ROOT_NODE
+		if name == "require" and self.state == OpenGLRegistryParserState.EXCLUDED_FEATURE_LIST_REQUIRE:
+			self.state = OpenGLRegistryParserState.EXCLUDED_FEATURE_LIST		
+		if name == "require" and self.state == OpenGLRegistryParserState.INCLUDED_FEATURE_LIST_REQUIRE:
+			self.state = OpenGLRegistryParserState.INCLUDED_FEATURE_LIST
 
 class OpenGLRegistry(xml.sax.ContentHandler):
 	
@@ -92,6 +120,8 @@ class OpenGLRegistry(xml.sax.ContentHandler):
 		self.cppFile = cppFile
 		self.excludedApiCalls = excludedApiCalls
 		self.apiCallChunk = ''
+		self.apiAlias = ''
+		self.definedApiCalls = set()
 
 	def startElement(self, name, attrs):
 		if name == "registry" and self.state == OpenGLRegistryParserState.NONE:
@@ -103,7 +133,10 @@ class OpenGLRegistry(xml.sax.ContentHandler):
 		if name == "proto" and self.state == OpenGLRegistryParserState.COMMAND:
 			self.state = OpenGLRegistryParserState.PROTO		
 		if name == "name" and self.state == OpenGLRegistryParserState.PROTO:
-			self.state = OpenGLRegistryParserState.PROTO_NAME				
+			self.state = OpenGLRegistryParserState.PROTO_NAME		
+		if name == "alias" and self.state == OpenGLRegistryParserState.COMMAND:
+			self.state = OpenGLRegistryParserState.COMMAND_ALIAS
+			self.apiAlias = attrs['name'];		
 			
 	def characters(self, content):		
 		if self.state == OpenGLRegistryParserState.PROTO_NAME:
@@ -115,13 +148,16 @@ class OpenGLRegistry(xml.sax.ContentHandler):
 		if name == "commands" and self.state == OpenGLRegistryParserState.COMMAND_LIST:
 			self.state = OpenGLRegistryParserState.ROOT_NODE
 		if name == "command" and self.state == OpenGLRegistryParserState.COMMAND:
+			writeStaticFunctionBinding(self.cppFile, self.excludedApiCalls, self.definedApiCalls, self.apiCallChunk, self.apiAlias)
+			self.apiCallChunk = ''
+			self.apiAlias = ''
 			self.state = OpenGLRegistryParserState.COMMAND_LIST
 		if name == "proto" and self.state == OpenGLRegistryParserState.PROTO:
 			self.state = OpenGLRegistryParserState.COMMAND		
-		if name == "name" and self.state == OpenGLRegistryParserState.PROTO_NAME:
-			writeStaticFunctionBinding(self.cppFile, self.excludedApiCalls, self.apiCallChunk)
-			self.state = OpenGLRegistryParserState.PROTO			
-			self.apiCallChunk = ""
+		if name == "name" and self.state == OpenGLRegistryParserState.PROTO_NAME:			
+			self.state = OpenGLRegistryParserState.PROTO		
+		if name == "alias" and self.state == OpenGLRegistryParserState.COMMAND_ALIAS:
+			self.state = OpenGLRegistryParserState.COMMAND
 
 # This function is used to generate runtime API bindings for OpenGL, in the global namespace.
 def genBindings(registryPath, registryFileName, cppFile):
@@ -132,11 +168,17 @@ def genBindings(registryPath, registryFileName, cppFile):
 
 	registryFilePath = os.path.join(registryPath, registryFileName)
 	excludedApiCalls = set()
+	includedApiCalls = set()
 
 	print('Building API exclusion list...')
 	openGLExlusionsParser = xml.sax.make_parser()
-	openGLExlusionsParser.setContentHandler(OpenGLRegistryExclusions(excludedApiCalls))
+	openGLExlusionsParser.setContentHandler(OpenGLRegistryExclusions(excludedApiCalls, includedApiCalls))
 	openGLExlusionsParser.parse(open(registryFilePath, "r"))
+
+	# Some calls defined in other OpenGL profiles, might still be valid, so we preserve them.
+	for apiCall in includedApiCalls:
+		if apiCall in excludedApiCalls:
+			excludedApiCalls.remove(apiCall)
 
 	print('Generating C++ binding...')
 	writeCppFilePrefix(cppOutputFile)
