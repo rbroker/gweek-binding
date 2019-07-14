@@ -24,6 +24,8 @@ After which, the bound OpenGL functions can be accessed by including the appropr
 
 bool is_func_available()
 {
+    initialize_bindings();
+    
     return ::glGenBuffers != nullptr;
 }
 ```

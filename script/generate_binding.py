@@ -40,6 +40,9 @@ def writeHdrFilePrefix(hdrFile):
 	hdrFile.write('extern "C"\n')
 	hdrFile.write('{\n')
 	hdrFile.write('#endif\n')
+	hdrFile.write('/* Needed to trigger binding initialization from the system OpenGL libraries. */')
+	hdrFile.write('void initialize_bindings();\n')
+	hdrFile.write('\n');
 
 def writeHdrFileSuffix(hdrFile):
 	hdrFile.write('#ifdef __cplusplus\n')
