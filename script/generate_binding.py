@@ -1,17 +1,15 @@
 # This script generates a set of runtime OpenGL bindings for API extensions.
 
-openGLRegistryPrefix = '../extern/OpenGL-Registry/xml/'
-openGLExtensionRegistry = '../extern/OpenGL-Registry/extensions/'
 nonPortableExtensions = set()
 
 import sys, os, argparse, xml.sax
 
 from enum import Enum
 
-def findNonPortableExtensionSuffixes():
+def findNonPortableExtensionSuffixes(extensionDir):
 	# https://www.opengl.org/archives/resources/features/OGLextensions/	
-	for dirent in os.listdir(openGLExtensionRegistry):
-		if not os.path.isdir(os.path.join(openGLExtensionRegistry, dirent)):			
+	for dirent in os.listdir(extensionDir):
+		if not os.path.isdir(os.path.join(extensionDir, dirent)):			
 			continue
 
 		if (dirent != 'ARB'):
@@ -154,13 +152,13 @@ def genBindings(registryPath, registryFileName, cppFile):
 if __name__ == '__main__':
 	
 	argParser = argparse.ArgumentParser(description='Generate OpenGL runtime Bindings from OpenGL Registry')
-	argParser.add_argument('--path', help='The path to the OpenGL-Registry XML directory', default=openGLRegistryPrefix)
-	argParser.add_argument('--registry', help='override registry input file', default='gl.xml')
-	argParser.add_argument('--cppfile', help='override C++ output file path', default='../src/gl.cpp')
-	argParser.add_argument('--extensionDir', help='override extension registry directory', default=openGLExtensionRegistry)
+	argParser.add_argument('--xmlDir', help='The path to the OpenGL-Registry XML directory')
+	argParser.add_argument('--xmlName', help='override registry input file', default='gl.xml')
+	argParser.add_argument('--cppFile', help='override C++ output file path', default='../src/gl.cpp')
+	argParser.add_argument('--extensionDir', help='override extension registry directory')
 	args = argParser.parse_args()
 
 	print('Finding OpenGL extension suffixies...')
-	findNonPortableExtensionSuffixes()	
+	findNonPortableExtensionSuffixes(args.extensionDir)	
 
-	genBindings(args.path, args.registry, args.cppfile)		
+	genBindings(args.xmlDir, args.xmlName, args.cppFile)		
