@@ -29,7 +29,7 @@
 
 #include <Windows.h>
 #include <gl/GL.h>
-#include <GL/glext.t>
+#include <GL/glext.h>
 
 #if defined(GWEEK_WIN32_LEAN_AND_MEAN)
 #undef GWEEK_WIN32_LEAN_AND_MEAN
