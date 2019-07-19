@@ -8,12 +8,12 @@ It was intended to be easily included and built from a git submodule, in other p
 - CMake
 
 # Using the Bindings
-The build uses CMAKE to define a new build target "`gweek-binding`", as well as a variable "`${gweek-binding-include}`", allowing easy integration into an existing CMakeLists.txt using:
+The build uses CMAKE to define a new build target "`gweek-binding`", as well as a variable "`${gweek_binding_include}`", allowing easy integration into an existing CMakeLists.txt using:
 
 ```cmake
 add_subdirectory(extern/gweek-binding)
 
-target_include_directories(myproject PRIVATE ${gweek-binding-include})
+target_include_directories(myproject PRIVATE ${gweek_binding_include})
 target_link_libraries(myproject PRIVATE gweek-binding)
 ```
 
