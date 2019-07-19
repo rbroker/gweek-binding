@@ -29,7 +29,7 @@
 
 #include <Windows.h>
 #include <gl/GL.h>
-#include <GL/glext.h>
+#include <GL/glext.t>
 
 #if defined(GWEEK_WIN32_LEAN_AND_MEAN)
 #undef GWEEK_WIN32_LEAN_AND_MEAN
@@ -41,6 +41,9 @@
 #undef NOMINMAX
 #endif
 
+#define GWEEK_SYSTEM_DEFINES_GL_VERSION_1_0 1
+#define GWEEK_SYSTEM_DEFINES_GL_VERSION_1_1 1
+
 #define GWEEK_PROC_ADDR_FUNC	(wglGetProcAddress)
 #endif
 
@@ -49,6 +52,14 @@
 // #################################
 #if defined(GWEEK_PLATFORM_LINUX)
 #include <GL/gl.h>
+#include <GL/glx.h>
 #include <GL/glext.h>
-#define GWEEK_PROC_ADDR_FUNC    (glxGetProcAddress)
+
+#define GWEEK_SYSTEM_DEFINES_GL_VERSION_1_0 1
+#define GWEEK_SYSTEM_DEFINES_GL_VERSION_1_1 1
+#define GWEEK_SYSTEM_DEFINES_GL_VERSION_1_2 1
+#define GWEEK_SYSTEM_DEFINES_GL_VERSION_1_3 1
+#define GWEEK_SYSTEM_DEFINES_GL_ARB_imaging 1
+
+#define GWEEK_PROC_ADDR_FUNC    (glXGetProcAddress)
 #endif

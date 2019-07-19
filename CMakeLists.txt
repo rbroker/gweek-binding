@@ -14,8 +14,7 @@ set_source_files_properties(${CMAKE_CURRENT_SOURCE_DIR}/src/opengl.c PROPERTIES 
 # Copy OpenGL headers from registry
 add_custom_command(
     OUTPUT
-        ${gweek_binding_include}/GL/glext.h
-        ${gweek_binding_include}/KHR/khrplatform.h
+        ${gweek_binding_include}/GL/glext.h        
     COMMAND 
         ${CMAKE_COMMAND} -E copy_directory ${CMAKE_CURRENT_SOURCE_DIR}/extern/OpenGL-Registry/api/GL/ ${gweek_binding_include}/GL/
     COMMENT 

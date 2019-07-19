@@ -12,11 +12,17 @@ class OpenGLCommand():
 		self.name = name
 		self.params = params
 
-class OpenGLProfile():
-	def __init__(self, profile, name, commands):
-		self.profile = profile
+class OpenGLCommandRemoval():
+	def __init__(self, name, feature):
+		self.name = name		
+		self.feature = feature
+
+class OpenGLFeature():
+	def __init__(self, api, name, requiredCommands, removedCommands):
+		self.api = api
 		self.name = name
-		self.commands = commands
+		self.requiredCommands = requiredCommands
+		self.removedCommands = removedCommands		
 
 def loadRegistry(xmlPath):
 	tree = ET.parse(xmlPath)
@@ -61,42 +67,86 @@ def getCommands(registry):
 						if tag == 'name':
 							paramName = tag.text
 
-					cmdParams.insert(0, OpenGLParam(paramName, paramType))
+					cmdParams.append(OpenGLParam(paramName, paramType))
 			
-			commandsDict[cmdName] = (OpenGLCommand(namespace, cmdPrototype, cmdName, cmdParams))
+			commandsDict[cmdName] = OpenGLCommand(namespace, cmdPrototype, cmdName, cmdParams)
 
 	return commandsDict
 
-def createProfiles(registry):
-	profileList = list()
+def getExtensionMethods(registry):
+	extensionSet = dict()
+
+	for extensions in registry:
+		if extensions.tag != 'extensions':
+			continue
+
+		for extension in extensions:			
+
+			name = extension.get('name', default='')
+
+			for require in extension:
+				if require.tag != 'require':
+					continue
+
+				for command in require:
+					if command.tag != 'command':
+						continue
+					
+					commandName = command.get('name', default='')					
+					extensionSet[commandName] = name
+
+	return extensionSet
+		
+
+def createFeatureSet(registry):
+	featureSet = list()
 
 	commands = getCommands(registry)
 
 	for feature in registry:
 		if feature.tag != 'feature':
+			continue		
+
+		api = feature.get('api', default='')
+		name = feature.get('name', default='')
+		requiredCommands = dict()
+		removedCommands = dict()		
+
+		# Skip generation of bindings for OpenGL Versions < 1.1
+		# as these should already be fully defined & exported.
+		if api == 'gl' and float(feature.get('number', default=0)) <= 1.1:
 			continue
 
-		profile = feature.get('api', default='')
-		name = feature.get('name', default='')
-
-		for require in feature:
-			if require.tag != 'require':
-				continue
-
-			profileCommands = list()
+		for featureDefinition in feature:			
+			if featureDefinition.tag == 'require':		
+				for command in featureDefinition:
+					if command.tag != 'command':
+						continue
+					
+					commandName = command.get('name', default='')													
+					requiredCommands[commandName] = commands[commandName]
 			
-			for command in require:
-				if command.tag != 'command':
-					continue
+			if featureDefinition.tag == 'remove':
+				for command in featureDefinition:
+					if command.tag != 'command':
+						continue
 
-				commandName = command.get('name', default='')				
-				profileCommands.insert(0, commands[commandName])
+					commandName = command.get('name', default='')									
+					removedCommands[commandName] = commands[commandName]
 
-		profileList.append(OpenGLProfile(profile, name, profileCommands))
+		featureSet.append(OpenGLFeature(api, name, requiredCommands, removedCommands))
 
-	return profileList
+	return featureSet
 
-def writeHeaderFile(profiles, hdrFileName):	
+def generatedRemovedCommandState(featureSets):
+	removedCommands = dict()
+	for feature in featureSets:
+		for command in feature.removedCommands:
+			removedCommands[command] = OpenGLCommandRemoval(command, feature.name)	
+
+	return removedCommands
+
+def writeHeaderFile(featureSets, removedCommands, extensionMethods, hdrFileName):	
 	if not os.path.exists(os.path.dirname(hdrFileName)):
 		os.makedirs(os.path.dirname(hdrFileName), exist_ok=True)
 
@@ -114,15 +164,28 @@ extern "C"
 \t/* Needed to trigger binding initialization from the system OpenGL libraries. */
 \tvoid gweekgl_initialize();
 	
+""")	
+
+	for feature in featureSets:
+		hdrFile.write(f"#ifdef {feature.name}\n")
+		hdrFile.write(f"#ifndef GWEEK_SYSTEM_DEFINES_{feature.name}\n")
+
+		for command in feature.requiredCommands:			
+			if command in removedCommands:
+				hdrFile.write(f"""#ifndef {removedCommands[command].feature} /* Removed In {removedCommands[command].feature} */
+\tPFN{command.upper()}PROC {command};
+#endif
 """)
+			elif command in extensionMethods:
+				hdrFile.write(f"""#ifndef GWEEK_SYSTEM_DEFINES_{extensionMethods[command]} /* Added by an extension */
+\tPFN{command.upper()}PROC {command};
+#endif
+""")
+			else:
+				hdrFile.write(f"\tPFN{command.upper()}PROC {command};\n")
 
-	for profile in profiles:
-		hdrFile.write(f"#ifdef {profile.name}\n")		
-
-		for command in profile.commands:
-			hdrFile.write(f"\tPFN{command.name.upper()}PROC {command.name};\n")
-
-		hdrFile.write(f"#endif /* {profile.name} */\n")
+		hdrFile.write(f"#endif /* GWEEK_SYSTEM_DEFINES_{feature.name} */\n")
+		hdrFile.write(f"#endif /* {feature.name} */\n")
 
 	hdrFile.write("""
 #ifdef __cplusplus
@@ -130,7 +193,7 @@ extern "C"
 #endif
 """)
 
-def writeSourceFile(profiles, sourceFileName):
+def writeSourceFile(featureSets, removedCommands, extensionMethods, sourceFileName):
 	if not os.path.exists(os.path.dirname(sourceFileName)):
 		os.makedirs(os.path.dirname(sourceFileName), exist_ok=True)
 
@@ -140,26 +203,52 @@ def writeSourceFile(profiles, sourceFileName):
 
 """)
 
-	for profile in profiles:
-		sourceFile.write(f'#ifdef {profile.name}\n')		
+	for feature in featureSets:
+		sourceFile.write(f'#ifdef {feature.name}\n')		
+		sourceFile.write(f"#ifndef GWEEK_SYSTEM_DEFINES_{feature.name}\n")
 
-		for command in profile.commands:
-			sourceFile.write(f'PFN{command.name.upper()}PROC {command.name};\n')
-
-		sourceFile.write(f'#endif /* {profile.name} */\n')
+		for command in feature.requiredCommands:
+			if command in removedCommands:
+				sourceFile.write(f"""#ifndef {removedCommands[command].feature} /* Removed In {removedCommands[command].feature} */
+PFN{command.upper()}PROC {command};
+#endif
+""")
+			elif command in extensionMethods:
+				sourceFile.write(f"""#ifndef GWEEK_SYSTEM_DEFINES_{extensionMethods[command]} /* Added by an extension */
+PFN{command.upper()}PROC {command};
+#endif
+""")
+			else:
+				sourceFile.write(f'PFN{command.upper()}PROC {command};\n')
+	
+		sourceFile.write(f'#endif /* GWEEK_SYSTEM_DEFINES_{feature.name} */\n')
+		sourceFile.write(f'#endif /* {feature.name} */\n')
 
 	sourceFile.write("""
 void gweekgl_initialize()
 {
 """)
 
-	for profile in profiles:
-		sourceFile.write(f"#ifdef {profile.name}\n")
+	for feature in featureSets:
+		sourceFile.write(f"#ifdef {feature.name}\n")
+		sourceFile.write(f"#ifndef GWEEK_SYSTEM_DEFINES_{feature.name}\n")
 
-		for command in profile.commands:
-			sourceFile.write(f'\t{command.name} = (PFN{command.name.upper()}PROC)(GWEEK_PROC_ADDR_FUNC("{command.name}");\n')
+		for command in feature.requiredCommands:
+			if command in removedCommands:			
+				sourceFile.write(f"""#ifndef {removedCommands[command].feature} /* Removed In {removedCommands[command].feature} */
+\t{command} = (PFN{command.upper()}PROC)GWEEK_PROC_ADDR_FUNC("{command}");
+#endif
+""")
+			elif command in extensionMethods:
+				sourceFile.write(f"""#ifndef GWEEK_SYSTEM_DEFINES_{extensionMethods[command]} /* Added by an extension */
+\t{command} = (PFN{command.upper()}PROC)GWEEK_PROC_ADDR_FUNC("{command}");
+#endif
+""")
+			else:
+				sourceFile.write(f'\t{command} = (PFN{command.upper()}PROC)GWEEK_PROC_ADDR_FUNC("{command}");\n')
 
-		sourceFile.write(f"#endif /* {profile.name} */\n")
+		sourceFile.write(f"#endif /* GWEEK_SYSTEM_DEFINES_{feature.name} */\n")
+		sourceFile.write(f"#endif /* {feature.name} */\n")
 
 	sourceFile.write("}")
 
@@ -175,7 +264,9 @@ if __name__ == '__main__':
 
 	print(f"Loading OpenGL Registry from: '{args.xmlName}''")
 	registry = loadRegistry(os.path.join(args.xmlDir, args.xmlName))
-	profiles = createProfiles(registry)
-	
-	writeHeaderFile(profiles, args.hdrFile)
-	writeSourceFile(profiles, args.srcFile)
+	featureSets = createFeatureSet(registry)
+	extensionMethods = getExtensionMethods(registry)	
+	removedCommands = generatedRemovedCommandState(featureSets)
+
+	writeHeaderFile(featureSets, removedCommands, extensionMethods, args.hdrFile)
+	writeSourceFile(featureSets, removedCommands, extensionMethods, args.srcFile)
