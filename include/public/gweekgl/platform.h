@@ -43,6 +43,7 @@
 
 #define GWEEK_SYSTEM_DEFINES_GL_VERSION_1_0 1
 #define GWEEK_SYSTEM_DEFINES_GL_VERSION_1_1 1
+#define GWEEK_SYSTEM_DEFINES_GL_ARB_uniform_buffer_object 1
 
 #define GWEEK_PROC_ADDR_FUNC	(wglGetProcAddress)
 #endif
