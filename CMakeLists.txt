@@ -30,12 +30,13 @@ add_custom_command(
         "Copying Pre-Generaed OpenGL Headers from EGL-Registry"
 )
             
+# Generate The OpenGL bindings from the registry files.
 add_custom_command(
     OUTPUT
         ${gweek_binding_include}/gweekgl/opengl.h
         ${CMAKE_CURRENT_SOURCE_DIR}/src/opengl.c     
     COMMAND
-        ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/script/opengl_registry.py --xmlDir "${CMAKE_CURRENT_SOURCE_DIR}/extern/OpenGL-Registry/xml/" --xmlName "gl.xml" --srcFile "${CMAKE_CURRENT_SOURCE_DIR}/src/opengl.c" --hdrFile "${gweek_binding_include}/gweekgl/opengl.h" --extensionDir "${CMAKE_CURRENT_SOURCE_DIR}/extern/OpenGL-Registry/extensions/"
+        ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/script/opengl_registry.py --xmlDir "${CMAKE_CURRENT_SOURCE_DIR}/extern/OpenGL-Registry/xml/" --xmlName "gl.xml" --srcFile "${CMAKE_CURRENT_SOURCE_DIR}/src/opengl.c" --hdrFile "${gweek_binding_include}/gweekgl/opengl.h"
     COMMENT
         "Generating code for core OpenGL bindings..."
 )

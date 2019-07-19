@@ -258,8 +258,7 @@ if __name__ == '__main__':
 	argParser.add_argument('--xmlDir', help='The path to the OpenGL-Registry XML directory')
 	argParser.add_argument('--xmlName', help='override registry input file', default='gl.xml')
 	argParser.add_argument('--srcFile', help='override C output file path', default='../src/opengl.c')
-	argParser.add_argument('--hdrFile', help='override output header file path')
-	argParser.add_argument('--extensionDir', help='override extension registry directory')
+	argParser.add_argument('--hdrFile', help='override output header file path')	
 	args = argParser.parse_args()
 
 	print(f"Loading OpenGL Registry from: '{args.xmlName}''")
