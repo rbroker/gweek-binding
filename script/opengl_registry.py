@@ -173,16 +173,16 @@ extern "C"
 		for command in feature.requiredCommands:			
 			if command in removedCommands:
 				hdrFile.write(f"""#ifndef {removedCommands[command].feature} /* Removed In {removedCommands[command].feature} */
-\tPFN{command.upper()}PROC {command};
+\textern PFN{command.upper()}PROC {command};
 #endif
 """)
 			elif command in extensionMethods:
 				hdrFile.write(f"""#ifndef GWEEK_SYSTEM_DEFINES_{extensionMethods[command]} /* Added by an extension */
-\tPFN{command.upper()}PROC {command};
+\textern PFN{command.upper()}PROC {command};
 #endif
 """)
 			else:
-				hdrFile.write(f"\tPFN{command.upper()}PROC {command};\n")
+				hdrFile.write(f"\textern PFN{command.upper()}PROC {command};\n")
 
 		hdrFile.write(f"#endif /* GWEEK_SYSTEM_DEFINES_{feature.name} */\n")
 		hdrFile.write(f"#endif /* {feature.name} */\n")
