@@ -35,4 +35,5 @@ GLint get_major_opengl_version()
 }
 ```
 
+As this repository contains submodules from other repositories, don't forget to also clone these using `git submodule update --init --recursive`
 
