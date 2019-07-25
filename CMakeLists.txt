@@ -27,7 +27,7 @@ add_custom_command(
     COMMAND
         ${CMAKE_COMMAND} -E copy_directory ${CMAKE_CURRENT_SOURCE_DIR}/extern/EGL-Registry/api/KHR/ ${gweek_binding_include}/KHR/    
     COMMENT
-        "Copying Pre-Generaed OpenGL Headers from EGL-Registry"
+        "Copying Pre-Generated OpenGL Headers from EGL-Registry"
 )
             
 # Generate The OpenGL bindings from the registry files.
